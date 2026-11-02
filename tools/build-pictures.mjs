@@ -85,39 +85,74 @@ const lum = (hex) => {
   return 0.2126 * r + 0.7152 * g + 0.0722 * b;
 };
 
+// Tiles of the stack, in reading order. A null logo draws the small grid mark instead
+// (tools without a logo in Simple Icons).
 const groups = [
   ["Coding agent", [["claude", "Claude Code"]]],
-  ["Web", [["typescript", "TypeScript"], ["react", "React"], ["nextdotjs", "Next.js"], ["tailwindcss", "Tailwind CSS"]]],
-  ["Desktop and systems", [["rust", "Rust"], ["tauri", "Tauri"]]],
-  ["Data", [["postgresql", "PostgreSQL"]]],
+  ["Languages", [["typescript", "TypeScript"], ["python", "Python"], ["rust", "Rust"]]],
+  ["Frontend and apps", [["react", "React"], ["nextdotjs", "Next.js"], ["tailwindcss", "Tailwind CSS"], ["threedotjs", "Three.js"], ["tauri", "Tauri"]]],
+  ["Backend", [["nodedotjs", "Node.js"], ["nestjs", "NestJS"], ["fastify", "Fastify"], ["fastapi", "FastAPI"], ["rust", "Axum"]]],
+  ["APIs and realtime", [["openapiinitiative", "REST and OpenAPI"], [null, "WebSockets"], ["socketdotio", "Socket.IO"], ["telegram", "Telegram bots"]]],
+  ["Scraping and automation", [[null, "Playwright"], ["cheerio", "Cheerio"], [null, "Beautiful Soup"], [null, "Rotating proxies"]]],
+  ["AI", [["anthropic", "Claude API"], [null, "OpenAI API"], ["googlegemini", "Gemini"], ["elevenlabs", "ElevenLabs"], ["modelcontextprotocol", "MCP servers"]]],
+  ["Data and queues", [["postgresql", "PostgreSQL"], ["redis", "Redis"], ["drizzle", "Drizzle"], [null, "BullMQ"]]],
   ["Self-hosting", [["linux", "Linux servers"], ["docker", "Docker"]]],
   ["Cloud", [["cloudflare", "Cloudflare"], ["vercel", "Vercel"]]],
 ];
 
 function stack(t) {
   const th = themes[t];
-  const chipH = 44, rowGap = 14, pad = 32, labelX = 48, chipX0 = 260, ICON = 20, LABEL = 16;
-  const SH = pad * 2 + groups.length * chipH + (groups.length - 1) * rowGap + 30;
-  let body = `<path fill="${th.muted}" d="${text(F.medium, "STACK", labelX, pad + 12, 13)}"/>`;
-  groups.forEach(([name, items], gi) => {
-    const y = pad + 30 + gi * (chipH + rowGap);
-    body += `<path fill="${th.ink}" d="${text(F.medium, name, labelX, y + chipH / 2 + 6, 16)}"/>`;
-    let x = chipX0;
+  const GAP = 16, colW = (W - GAP) / 2, PAD = 22, HEAD = 30, chipH = 38, cg = 8, ICON = 17, LABEL = 15;
+  const inner = colW - PAD * 2;
+
+  // Lay out each tile's chips, wrapping inside the tile.
+  const tiles = groups.map(([name, items]) => {
+    const chips = [];
+    let x = 0, row = 0;
     for (const [slug, label] of items) {
-      const w = 14 + ICON + 10 + width(F.medium, label, LABEL) + 16;
-      let color = hexOf(slug);
-      if (t === "dark" && lum(color) < 0.25) color = th.ink;
-      if (t === "light" && lum(color) > 0.85) color = th.ink;
-      const s = ICON / 24;
-      body += `<rect x="${x + 0.5}" y="${y + 0.5}" width="${(w - 1).toFixed(1)}" height="${chipH - 1}" rx="10" fill="${th.chip}" stroke="${th.border}"/>`;
-      body += `<path fill="${color}" transform="translate(${x + 14} ${y + (chipH - ICON) / 2}) scale(${s})" d="${icon(slug)}"/>`;
-      body += `<path fill="${th.ink}" d="${text(F.medium, label, x + 14 + ICON + 10, y + chipH / 2 + 5.5, LABEL)}"/>`;
-      x += w + 10;
+      const w = 12 + ICON + 9 + width(F.medium, label, LABEL) + 14;
+      if (x > 0 && x + w > inner) { x = 0; row++; }
+      chips.push({ slug, label, x, row, w });
+      x += w + cg;
     }
-    if (x > W - 24) throw new Error(`row ${name} is too wide: ${x}`);
+    const rows = row + 1;
+    return { name, chips, h: PAD + HEAD + rows * chipH + (rows - 1) * cg + PAD };
   });
+
+  // Tiles sit in pairs, left and right; both tiles of a row take the taller one's height.
+  let y = 0;
+  for (let i = 0; i < tiles.length; i += 2) {
+    const row = tiles.slice(i, i + 2), h = Math.max(...row.map((t) => t.h));
+    row.forEach((t, c) => { t.col = c; t.y = y; t.h = h; });
+    y += h + GAP;
+  }
+  const SH = y - GAP;
+
+  const mark = (x, y) => {
+    const s = 7, g = 2.5, o = (ICON - (s * 2 + g)) / 2, L = th.levels;
+    return [[0, 0, L[4]], [1, 0, L[2]], [0, 1, L[3]], [1, 1, L[4]]]
+      .map(([i, j, f]) => `<rect x="${(x + o + i * (s + g)).toFixed(1)}" y="${(y + o + j * (s + g)).toFixed(1)}" width="${s}" height="${s}" rx="1.6" fill="${f}"/>`)
+      .join("");
+  };
+
+  let body = "";
+  for (const tile of tiles) {
+    const tx = tile.col * (colW + GAP);
+    body += `<rect x="${tx + 0.5}" y="${tile.y + 0.5}" width="${colW - 1}" height="${tile.h - 1}" rx="12" fill="${th.card}" stroke="${th.border}"/>`;
+    body += `<path fill="${th.muted}" d="${text(F.medium, tile.name, tx + PAD, tile.y + PAD + 12, 14)}"/>`;
+    for (const c of tile.chips) {
+      const x = tx + PAD + c.x, y = tile.y + PAD + HEAD + c.row * (chipH + cg), iy = y + (chipH - ICON) / 2;
+      body += `<rect x="${x + 0.5}" y="${y + 0.5}" width="${(c.w - 1).toFixed(1)}" height="${chipH - 1}" rx="9" fill="${th.chip}" stroke="${th.border}"/>`;
+      if (c.slug) {
+        let color = hexOf(c.slug);
+        if (t === "dark" && lum(color) < 0.25) color = th.ink;
+        if (t === "light" && lum(color) > 0.85) color = th.ink;
+        body += `<path fill="${color}" transform="translate(${x + 12} ${iy}) scale(${ICON / 24})" d="${icon(c.slug)}"/>`;
+      } else body += mark(x + 12, iy);
+      body += `<path fill="${th.ink}" d="${text(F.medium, c.label, x + 12 + ICON + 9, y + chipH / 2 + 5.2, LABEL)}"/>`;
+    }
+  }
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${SH}" viewBox="0 0 ${W} ${SH}" role="img" aria-label="Stack">
-<rect x="0.5" y="0.5" width="${W - 1}" height="${SH - 1}" rx="12" fill="${th.card}" stroke="${th.border}"/>
 ${body}
 </svg>
 `;
