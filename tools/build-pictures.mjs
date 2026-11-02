@@ -89,7 +89,9 @@ const groups = [
   ["Coding agent", [["claude", "Claude Code"]]],
   ["Web", [["typescript", "TypeScript"], ["react", "React"], ["nextdotjs", "Next.js"], ["tailwindcss", "Tailwind CSS"]]],
   ["Desktop and systems", [["rust", "Rust"], ["tauri", "Tauri"]]],
-  ["Data and hosting", [["postgresql", "PostgreSQL"], ["supabase", "Supabase"], ["cloudflare", "Cloudflare"], ["vercel", "Vercel"], ["docker", "Docker"]]],
+  ["Data", [["postgresql", "PostgreSQL"]]],
+  ["Self-hosting", [["linux", "Linux servers"], ["docker", "Docker"]]],
+  ["Cloud", [["cloudflare", "Cloudflare"], ["vercel", "Vercel"]]],
 ];
 
 function stack(t) {
