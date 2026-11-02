@@ -94,8 +94,7 @@ const groups = [
   ["Backend", [["nodedotjs", "Node.js"], ["nestjs", "NestJS"], ["fastify", "Fastify"], ["fastapi", "FastAPI"], ["rust", "Axum"]]],
   ["APIs and realtime", [["openapiinitiative", "REST and OpenAPI"], [null, "WebSockets"], ["socketdotio", "Socket.IO"], ["telegram", "Telegram bots"]]],
   ["Scraping and automation", [[null, "Playwright"], ["cheerio", "Cheerio"], [null, "Beautiful Soup"], [null, "Rotating proxies"]]],
-  ["AI", [["anthropic", "Claude API"], [null, "OpenAI API"], ["googlegemini", "Gemini"], ["elevenlabs", "ElevenLabs"], ["modelcontextprotocol", "MCP servers"]]],
-  ["Data and queues", [["postgresql", "PostgreSQL"], ["redis", "Redis"], ["drizzle", "Drizzle"], [null, "BullMQ"]]],
+  ["Data and queues", [["postgresql", "PostgreSQL"], ["redis", "Redis"], ["drizzle", "Drizzle"], [null, "BullMQ"]], { full: true }],
   ["Self-hosting", [["linux", "Linux servers"], ["docker", "Docker"]]],
   ["Cloud", [["cloudflare", "Cloudflare"], ["vercel", "Vercel"]]],
 ];
@@ -103,10 +102,10 @@ const groups = [
 function stack(t) {
   const th = themes[t];
   const GAP = 16, colW = (W - GAP) / 2, PAD = 22, HEAD = 30, chipH = 38, cg = 8, ICON = 17, LABEL = 15;
-  const inner = colW - PAD * 2;
 
   // Lay out each tile's chips, wrapping inside the tile.
-  const tiles = groups.map(([name, items]) => {
+  const tiles = groups.map(([name, items, opts]) => {
+    const full = !!opts?.full, tw = full ? W : colW, inner = tw - PAD * 2;
     const chips = [];
     let x = 0, row = 0;
     for (const [slug, label] of items) {
@@ -116,15 +115,17 @@ function stack(t) {
       x += w + cg;
     }
     const rows = row + 1;
-    return { name, chips, h: PAD + HEAD + rows * chipH + (rows - 1) * cg + PAD };
+    return { name, chips, full, tw, h: PAD + HEAD + rows * chipH + (rows - 1) * cg + PAD };
   });
 
   // Tiles sit in pairs, left and right; both tiles of a row take the taller one's height.
+  // A full-width tile takes a row of its own.
   let y = 0;
-  for (let i = 0; i < tiles.length; i += 2) {
-    const row = tiles.slice(i, i + 2), h = Math.max(...row.map((t) => t.h));
+  for (let i = 0; i < tiles.length; ) {
+    const row = tiles[i].full ? [tiles[i]] : tiles.slice(i, i + 2).filter((t) => !t.full);
+    const h = Math.max(...row.map((t) => t.h));
     row.forEach((t, c) => { t.col = c; t.y = y; t.h = h; });
-    y += h + GAP;
+    y += h + GAP; i += row.length;
   }
   const SH = y - GAP;
 
@@ -138,7 +139,7 @@ function stack(t) {
   let body = "";
   for (const tile of tiles) {
     const tx = tile.col * (colW + GAP);
-    body += `<rect x="${tx + 0.5}" y="${tile.y + 0.5}" width="${colW - 1}" height="${tile.h - 1}" rx="12" fill="${th.card}" stroke="${th.border}"/>`;
+    body += `<rect x="${tx + 0.5}" y="${tile.y + 0.5}" width="${tile.tw - 1}" height="${tile.h - 1}" rx="12" fill="${th.card}" stroke="${th.border}"/>`;
     body += `<path fill="${th.muted}" d="${text(F.medium, tile.name, tx + PAD, tile.y + PAD + 12, 14)}"/>`;
     for (const c of tile.chips) {
       const x = tx + PAD + c.x, y = tile.y + PAD + HEAD + c.row * (chipH + cg), iy = y + (chipH - ICON) / 2;
