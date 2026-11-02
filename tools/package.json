@@ -1,0 +1,7 @@
+{
+  "name": "profile-pictures",
+  "private": true,
+  "type": "module",
+  "scripts": { "build": "node build-pictures.mjs" },
+  "devDependencies": { "geist": "1.9.0", "opentype.js": "1.3.4", "simple-icons": "16.36.0" }
+}
